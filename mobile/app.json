@@ -1,0 +1,30 @@
+{
+  "expo": {
+    "name": "OfflineTaker",
+    "slug": "offlinetaker",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "scheme": "offlinetaker",
+    "userInterfaceStyle": "automatic",
+    "ios": {
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSMicrophoneUsageDescription": "OfflineTaker records meetings so it can transcribe and summarize them."
+      }
+    },
+    "android": {
+      "permissions": [
+        "RECORD_AUDIO"
+      ]
+    },
+    "plugins": [
+      [
+        "expo-av",
+        {
+          "microphonePermission": "OfflineTaker records meetings so it can transcribe and summarize them."
+        }
+      ],
+      "expo-asset"
+    ]
+  }
+}
