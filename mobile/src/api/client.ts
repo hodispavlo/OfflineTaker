@@ -48,6 +48,10 @@ export async function uploadRecording(params: {
   });
 }
 
+export function retryNote(noteId: number): Promise<{ note_id: number; status: string; message: string }> {
+  return request(`/api/notes/${noteId}/retry`, { method: "POST" });
+}
+
 function resolveUrl(value: string): string {
   if (value.startsWith("http://") || value.startsWith("https://") || value.startsWith("file://")) {
     return value;

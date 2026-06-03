@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session, selectinload
 
 from app.core.config import Settings, get_settings
 from app.db.session import get_db
-from app.models.note import Note, NoteStatus
+from app.models.note import Note, NoteStatus, Summary, TranscriptSegment
 from app.schemas.note import NoteListItem, NoteRead, UploadResponse
 from app.services.processing import process_note
 
@@ -61,3 +61,30 @@ def get_note(note_id: int, db: Session = Depends(get_db)) -> Note:
     if note is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Note not found")
     return note
+
+
+@router.post("/{note_id}/retry", response_model=UploadResponse, status_code=status.HTTP_202_ACCEPTED)
+async def retry_note_processing(
+    note_id: int,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
+    settings: Settings = Depends(get_settings),
+) -> UploadResponse:
+    note = db.get(Note, note_id)
+    if note is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Note not found")
+
+    filename = note.audio_url.removeprefix("/media/")
+    audio_path = settings.upload_dir / filename
+    if not audio_path.exists():
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Audio file not found")
+
+    db.query(TranscriptSegment).filter(TranscriptSegment.note_id == note.id).delete()
+    db.query(Summary).filter(Summary.note_id == note.id).delete()
+    note.status = NoteStatus.processing
+    note.error_message = None
+    db.commit()
+    db.refresh(note)
+
+    background_tasks.add_task(process_note, note.id, audio_path)
+    return UploadResponse(note_id=note.id, status=note.status, message="Audio queued for retry.")
