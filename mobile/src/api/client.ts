@@ -27,11 +27,15 @@ export async function uploadRecording(params: {
   uri: string;
   title: string;
   durationSeconds?: number;
+  professionProfile?: string;
 }): Promise<{ note_id: number; status: string; message: string }> {
   const formData = new FormData();
   formData.append("title", params.title);
   if (params.durationSeconds !== undefined) {
     formData.append("duration", String(params.durationSeconds));
+  }
+  if (params.professionProfile) {
+    formData.append("profession_profile", params.professionProfile);
   }
   formData.append("file", {
     uri: params.uri,
@@ -48,8 +52,21 @@ export async function uploadRecording(params: {
   });
 }
 
-export function retryNote(noteId: number): Promise<{ note_id: number; status: string; message: string }> {
-  return request(`/api/notes/${noteId}/retry`, { method: "POST" });
+export function retryNote(
+  noteId: number,
+  professionProfile?: string
+): Promise<{ note_id: number; status: string; message: string }> {
+  return request(`/api/notes/${noteId}/retry`, {
+    method: "POST",
+    body: JSON.stringify({ profession_profile: professionProfile }),
+    headers: {
+      "Content-Type": "application/json",
+    },
+  });
+}
+
+export function deleteNote(noteId: number): Promise<{ ok: boolean }> {
+  return request(`/api/notes/${noteId}`, { method: "DELETE" });
 }
 
 function resolveUrl(value: string): string {

@@ -33,4 +33,5 @@ export type RootStackParamList = {
   Dashboard: undefined;
   Recorder: undefined;
   NoteDetail: { noteId: number };
+  Settings: undefined;
 };

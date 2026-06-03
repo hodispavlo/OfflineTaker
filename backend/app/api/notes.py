@@ -2,7 +2,7 @@ from pathlib import Path
 from typing import Optional
 from uuid import uuid4
 
-from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, UploadFile, status
+from fastapi import APIRouter, BackgroundTasks, Body, Depends, File, Form, HTTPException, UploadFile, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
@@ -21,6 +21,7 @@ async def upload_note(
     file: UploadFile = File(...),
     title: str = Form(default="Untitled recording"),
     duration: Optional[float] = Form(default=None),
+    profession_profile: Optional[str] = Form(default=None),
     db: Session = Depends(get_db),
     settings: Settings = Depends(get_settings),
 ) -> UploadResponse:
@@ -42,7 +43,7 @@ async def upload_note(
     db.commit()
     db.refresh(note)
 
-    background_tasks.add_task(process_note, note.id, audio_path)
+    background_tasks.add_task(process_note, note.id, audio_path, profession_profile)
     return UploadResponse(note_id=note.id, status=note.status, message="Audio uploaded and queued.")
 
 
@@ -67,6 +68,7 @@ def get_note(note_id: int, db: Session = Depends(get_db)) -> Note:
 async def retry_note_processing(
     note_id: int,
     background_tasks: BackgroundTasks,
+    profession_profile: Optional[str] = Body(default=None, embed=True),
     db: Session = Depends(get_db),
     settings: Settings = Depends(get_settings),
 ) -> UploadResponse:
@@ -86,5 +88,25 @@ async def retry_note_processing(
     db.commit()
     db.refresh(note)
 
-    background_tasks.add_task(process_note, note.id, audio_path)
+    background_tasks.add_task(process_note, note.id, audio_path, profession_profile)
     return UploadResponse(note_id=note.id, status=note.status, message="Audio queued for retry.")
+
+
+@router.delete("/{note_id}")
+def delete_note(note_id: int, db: Session = Depends(get_db), settings: Settings = Depends(get_settings)) -> dict[str, bool]:
+    note = db.get(Note, note_id)
+    if note is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Note not found")
+
+    filename = note.audio_url.removeprefix("/media/")
+    audio_path = settings.upload_dir / filename
+
+    db.query(TranscriptSegment).filter(TranscriptSegment.note_id == note.id).delete()
+    db.query(Summary).filter(Summary.note_id == note.id).delete()
+    db.delete(note)
+    db.commit()
+
+    if audio_path.exists():
+        audio_path.unlink()
+
+    return {"ok": True}

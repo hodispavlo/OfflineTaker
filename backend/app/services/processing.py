@@ -1,4 +1,5 @@
 from pathlib import Path
+from typing import Optional
 
 from sqlalchemy.orm import Session
 
@@ -9,7 +10,7 @@ from app.services.summarization import summarize_transcript
 from app.services.transcription import transcribe_audio
 
 
-async def process_note(note_id: int, audio_path: Path) -> None:
+async def process_note(note_id: int, audio_path: Path, profession_profile: Optional[str] = None) -> None:
     settings = get_settings()
     db: Session = SessionLocal()
     try:
@@ -18,7 +19,7 @@ async def process_note(note_id: int, audio_path: Path) -> None:
             return
 
         chunks = await transcribe_audio(audio_path, settings)
-        summary_markdown, action_items = await summarize_transcript(chunks, settings)
+        summary_markdown, action_items = await summarize_transcript(chunks, settings, profession_profile)
 
         note.transcript_segments = [
             TranscriptSegment(

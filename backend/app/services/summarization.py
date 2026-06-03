@@ -1,15 +1,23 @@
+from typing import Optional
+
 from app.core.config import Settings
+from app.services.profession_profiles import resolve_profession_profile
 from app.services.transcription import TranscriptChunk
 
 
-async def summarize_transcript(chunks: list[TranscriptChunk], settings: Settings) -> tuple[str, str]:
+async def summarize_transcript(
+    chunks: list[TranscriptChunk],
+    settings: Settings,
+    profession_profile: Optional[str] = None,
+) -> tuple[str, str]:
     transcript = "\n".join(
         f"[{chunk.start_time:.1f}-{chunk.end_time:.1f}] {chunk.speaker_label}: {chunk.text}"
         for chunk in chunks
     )
+    resolved_profile, profile_prompt = resolve_profession_profile(profession_profile)
 
     if not settings.openai_api_key:
-        return _mock_summary(chunks)
+        return _mock_summary(chunks, resolved_profile)
 
     from openai import AsyncOpenAI
 
@@ -22,7 +30,8 @@ async def summarize_transcript(chunks: list[TranscriptChunk], settings: Settings
                 "content": (
                     "You turn diarized meeting transcripts into concise Markdown notes. "
                     "Return sections named Key Takeaways and Action Items. Keep medical, legal, "
-                    "and private content factual; do not invent details."
+                    "and private content factual; do not invent details.\n\n"
+                    f"Active profession preset: {resolved_profile}.\n{profile_prompt}"
                 ),
             },
             {"role": "user", "content": transcript},
@@ -34,11 +43,12 @@ async def summarize_transcript(chunks: list[TranscriptChunk], settings: Settings
     return summary, action_items
 
 
-def _mock_summary(chunks: list[TranscriptChunk]) -> tuple[str, str]:
+def _mock_summary(chunks: list[TranscriptChunk], profession_profile: str = "Universal") -> tuple[str, str]:
     speaker_count = len({chunk.speaker_label for chunk in chunks})
     summary = (
         "## Key Takeaways\n"
         f"- Processed {len(chunks)} transcript segments across {speaker_count} speaker(s).\n"
+        f"- Active AI profile: {profession_profile}.\n"
         "- Real summarization will run when OPENAI_API_KEY is configured.\n\n"
         "## Action Items\n"
         "- Add provider API keys in backend/.env.\n"

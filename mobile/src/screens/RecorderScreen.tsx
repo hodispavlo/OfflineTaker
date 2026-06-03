@@ -5,12 +5,14 @@ import { useEffect, useRef, useState } from "react";
 import { Alert, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 
 import { uploadRecording } from "../api/client";
+import { useAIProfile } from "../context/AIProfileContext";
 import { colors } from "../theme/colors";
 import { RootStackParamList } from "../types";
 
 type Props = NativeStackScreenProps<RootStackParamList, "Recorder">;
 
 export function RecorderScreen({ navigation }: Props) {
+  const { selectedProfile } = useAIProfile();
   const recordingRef = useRef<Audio.Recording | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [title, setTitle] = useState("Untitled recording");
@@ -60,7 +62,12 @@ export function RecorderScreen({ navigation }: Props) {
     if (!recordingUri) return;
     setBusy(true);
     try {
-      const response = await uploadRecording({ uri: recordingUri, title, durationSeconds: seconds });
+      const response = await uploadRecording({
+        uri: recordingUri,
+        title,
+        durationSeconds: seconds,
+        professionProfile: selectedProfile,
+      });
       navigation.replace("NoteDetail", { noteId: response.note_id });
     } catch (err) {
       Alert.alert("Upload failed", err instanceof Error ? err.message : "Could not upload recording.");
