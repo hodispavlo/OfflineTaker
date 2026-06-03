@@ -15,6 +15,7 @@ import {
 } from "../components/InsightFeedback";
 import { SegmentedTabs } from "../components/SegmentedTabs";
 import { StatusBadge } from "../components/StatusBadge";
+import { useAIProfile } from "../context/AIProfileContext";
 import { colors } from "../theme/colors";
 import { Note, RootStackParamList, TranscriptSegment } from "../types";
 
@@ -22,6 +23,7 @@ type Props = NativeStackScreenProps<RootStackParamList, "NoteDetail">;
 type Tab = "Summary" | "Transcript";
 
 export function NoteDetailScreen({ route }: Props) {
+  const { selectedProfile } = useAIProfile();
   const [note, setNote] = useState<Note | null>(null);
   const [tab, setTab] = useState<Tab>("Summary");
   const [loading, setLoading] = useState(true);
@@ -55,7 +57,7 @@ export function NoteDetailScreen({ route }: Props) {
     setRetrying(true);
     try {
       if (note) {
-        await retryNote(note.id);
+        await retryNote(note.id, selectedProfile);
       }
       await load();
     } catch (err) {
